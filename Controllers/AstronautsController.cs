@@ -1,7 +1,6 @@
-using AstronautSatelliteAPI.DataPersistence;
-using AstronautSatelliteAPI.Models;
+using AstronautSatelliteAPI.DTOs;
+using AstronautSatelliteAPI.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace AstronautSatelliteAPI.Controllers;
 
@@ -9,56 +8,105 @@ namespace AstronautSatelliteAPI.Controllers;
 [Route("api/[controller]")]
 public class AstronautsController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly AstronautService _astronautService;
 
-    public AstronautsController(ApplicationDbContext context)
+    public AstronautsController(AstronautService astronautService)
     {
-        _context = context;
+        _astronautService = astronautService;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAstronauts()
+    public async Task<IActionResult> GetAstronauts([FromQuery] string sort = null, [FromQuery] string order = "asc")
     {
-        var astronauts = await _context.Astronauts.Include(a => a.Satellites).ToListAsync();
-        return Ok(astronauts);
+        try
+        {
+            var astronauts = await _astronautService.GetAllAstronautsAsync(sort, order);
+            return Ok(astronauts);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while retrieving astronauts.", details = ex.Message });
+        }
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetAstronaut(int id)
+    public async Task<IActionResult> GetAstronaut(long id)
     {
-        var astronaut = await _context.Astronauts.Include(a => a.Satellites).FirstOrDefaultAsync(a => a.Id == id);
-        if (astronaut == null) return NotFound();
-        return Ok(astronaut);
+        try
+        {
+            var astronaut = await _astronautService.GetAstronautByIdAsync(id);
+            return Ok(astronaut);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while retrieving the astronaut.", details = ex.Message });
+        }
     }
 
+    [HttpPost]
+    public async Task<IActionResult> CreateAstronaut([FromBody] AstronautDto astronautDto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        try
+        {
+            await _astronautService.CreateAstronautAsync(astronautDto);
+            return CreatedAtAction(nameof(GetAstronaut), new { id = astronautDto.Id }, astronautDto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while creating the astronaut.", details = ex.Message });
+        }
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateAstronaut(long id, [FromBody] AstronautDto astronautDto)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (id != astronautDto.Id) return BadRequest(new { message = "ID mismatch." });
+
+        try
+        {
+            await _astronautService.UpdateAstronautAsync(id, astronautDto);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while updating the astronaut.", details = ex.Message });
+        }
+    }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteAstronaut(int id)
+    public async Task<IActionResult> DeleteAstronaut(long id)
     {
-        var astronaut = await _context.Astronauts.FindAsync(id);
-        if (astronaut == null) return NotFound();
-        _context.Astronauts.Remove(astronaut);
-        await _context.SaveChangesAsync();
-        return NoContent();
-    }
-        [HttpPost]
-    public async Task<IActionResult> CreateAstronaut([FromBody] Astronaut astronaut)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-    
-        _context.Astronauts.Add(astronaut);
-        await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAstronaut), new { id = astronaut.Id }, astronaut);
-    }
-    
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateAstronaut(int id, [FromBody] Astronaut astronaut)
-    {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-        if (id != astronaut.Id) return BadRequest();
-    
-        _context.Entry(astronaut).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-        return NoContent();
+        try
+        {
+            await _astronautService.DeleteAstronautAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while deleting the astronaut.", details = ex.Message });
+        }
     }
 }
