@@ -1,61 +1,104 @@
 namespace AstronautSatelliteAPI.Controllers;
 
 using AstronautSatelliteAPI.DataPersistence;
+using AstronautSatelliteAPI.DTOs;
 using AstronautSatelliteAPI.Models;
+using AstronautSatelliteAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class SatellitesController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
+    private readonly SatelliteService _satelliteService;
 
-    public SatellitesController(ApplicationDbContext context)
+    public SatellitesController(SatelliteService satelliteService)
     {
-        _context = context;
+        _satelliteService = satelliteService;
     }
-
-    [HttpGet]
+        [HttpGet]
     public async Task<IActionResult> GetSatellites()
     {
-        var satellites = await _context.Satellites.Include(s => s.Astronauts).ToListAsync();
+        var satellites = await _satelliteService.GetAllSatellitesAsync();
         return Ok(satellites);
     }
-
+    
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetSatellite(int id)
+    public async Task<IActionResult> GetSatellite(long id)
     {
-        var satellite = await _context.Satellites.Include(s => s.Astronauts).FirstOrDefaultAsync(s => s.Id == id);
-        if (satellite == null) return NotFound();
-        return Ok(satellite);
+        try
+        {
+            var satellite = await _satelliteService.GetSatelliteByIdAsync(id);
+            return Ok(satellite);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
-
+    
     [HttpPost]
-    public async Task<IActionResult> CreateSatellite(Satellite satellite)
+    public async Task<IActionResult> CreateSatellite([FromBody] SatelliteDto satelliteDto)
     {
-        _context.Satellites.Add(satellite);
-        await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetSatellite), new { id = satellite.Id }, satellite);
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+    
+        try
+        {
+            await _satelliteService.CreateSatelliteAsync(satelliteDto);
+            return CreatedAtAction(nameof(GetSatellite), new { id = satelliteDto.Id }, satelliteDto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while creating the satellite.", details = ex.Message });
+        }
     }
-
+    
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateSatellite(int id, Satellite satellite)
+    public async Task<IActionResult> UpdateSatellite(long id, [FromBody] SatelliteDto satelliteDto)
     {
-        if (id != satellite.Id) return BadRequest();
-        _context.Entry(satellite).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-        return NoContent();
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+    
+        try
+        {
+            await _satelliteService.UpdateSatelliteAsync(id, satelliteDto);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while updating the satellite.", details = ex.Message });
+        }
     }
-
+    
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteSatellite(int id)
+    public async Task<IActionResult> DeleteSatellite(long id)
     {
-        var satellite = await _context.Satellites.FindAsync(id);
-        if (satellite == null) return NotFound();
-        _context.Satellites.Remove(satellite);
-        await _context.SaveChangesAsync();
-        return NoContent();
+        try
+        {
+            await _satelliteService.DeleteSatelliteAsync(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while deleting the satellite.", details = ex.Message });
+        }
     }
+    
 }

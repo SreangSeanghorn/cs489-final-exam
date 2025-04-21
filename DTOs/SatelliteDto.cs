@@ -4,6 +4,8 @@ namespace AstronautSatelliteAPI.DTOs;
 
 public class SatelliteDto
 {
+    internal List<long> AstronautIds;
+
     public long Id { get; set; }
 
     [Required]
