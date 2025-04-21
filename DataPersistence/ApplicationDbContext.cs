@@ -13,6 +13,10 @@ public class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<Astronaut>()
+       .HasMany(a => a.Satellites)
+       .WithMany(s => s.Astronauts)
+       .UsingEntity(j => j.ToTable("AstronautSatellites"));
 
         // Seed Satellites
         modelBuilder.Entity<Satellite>().HasData(

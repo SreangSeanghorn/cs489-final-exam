@@ -1,4 +1,5 @@
 using AstronautSatelliteAPI.DataPersistence;
+using AstronautSatelliteAPI.Repositories;
 using AstronautSatelliteAPI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -20,6 +21,8 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API for managing astronauts and satellites."
     });
 });
+builder.Services.AddScoped<IAstronautRepository, AstronautRepository>();
+builder.Services.AddScoped<ISatelliteRepository, SatelliteRepository>();
 builder.Services.AddScoped<AstronautService>();
 builder.Services.AddScoped<SatelliteService>();
 

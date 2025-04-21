@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AstronautSatelliteAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class AstronautsController : ControllerBase
 {
     private readonly AstronautService _astronautService;
